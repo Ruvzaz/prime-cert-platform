@@ -44,7 +44,6 @@ import {
   Filter,
 } from "lucide-react";
 import Link from "next/link";
-import { toast } from "sonner"; // Assuming sonner is used, or fallback to alert
 
 export default function ManagementPage() {
   const [activeTab, setActiveTab] = useState("certificates");
