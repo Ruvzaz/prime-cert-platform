@@ -1,105 +1,115 @@
 import { supabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import SearchForm from "@/components/search-form";
-import { Event } from "@/types"; // ตรวจสอบว่าคุณมี type นี้ หรือจะใช้ any ไปก่อนก็ได้
+import { Event } from "@/types";
 
-// บังคับให้โหลดข้อมูลใหม่เสมอ (ไม่ Cache) เพื่อความสดใหม่
 export const dynamic = "force-dynamic";
 
-// Next.js 15+: Params ต้องเป็น Promise
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
 export default async function EventPage(props: PageProps) {
-  // 1. ดึงค่า Slug จาก URL (ต้อง await)
   const params = await props.params;
   const slug = decodeURIComponent(params.slug);
 
-  // 2. ค้นหาข้อมูล Event จาก Supabase
   const { data: eventData, error } = await supabase
     .from("events")
     .select("*")
     .eq("slug", slug)
     .single();
 
-  // 3. ถ้าไม่เจอ หรือมี Error ให้ส่งไปหน้า 404
   if (error || !eventData) {
     console.error(`Event not found: ${slug}`, error);
     notFound();
   }
 
-  // Cast type ข้อมูล
   const event = eventData as Event;
+  const themeColor = event.theme_color || "#4f46e5"; // Default to indigo if missing
 
-  // Fallback: ถ้าไม่ได้ตั้งสีมา ให้ใช้สีกรมท่าเป็นค่าเริ่มต้น
-  const themeColor = event.theme_color || "#192768";
+  // Darken theme color for gradient text
+  const gradientStyle = {
+    background: `linear-gradient(135deg, ${themeColor} 0%, #0f172a 100%)`,
+  };
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-4 md:p-8 relative overflow-hidden">
+    <main className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden bg-slate-50 dark:bg-slate-950 font-sans">
       
-      {/* --- Background Section --- */}
-      {/* 1. Theme Color Gradient (Fallback) */}
+      {/* --- Dynamic Background --- */}
       <div 
-        className="absolute inset-0 z-0"
-        style={{ 
-          background: `linear-gradient(135deg, ${themeColor} 0%, #1e293b 100%)` 
-        }}
+        className="absolute inset-0 z-0 animate-fade-in"
+        style={gradientStyle}
       />
+      
+      {/* Background Texture/Pattern */}
+      <div className="absolute inset-0 z-0 opacity-20 pointer-events-none bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
 
-      {/* 2. Poster Image (Overlay with Blur) */}
+      {/* Optional Poster Blur Overlay */}
       {event.poster_url && (
-        <div className="absolute inset-0 z-0 opacity-60">
+        <div className="absolute inset-0 z-0 opacity-20 dark:opacity-10 pointer-events-none overflow-hidden mix-blend-overlay">
            <img
             src={event.poster_url}
-            alt="Event Background"
-            className="w-full h-full object-cover blur-sm scale-110"
+            alt=""
+            className="w-full h-full object-cover blur-[100px] scale-150"
           />
-          {/* Noise Texture for premium feel (Optional) */}
-          <div className="absolute inset-0 bg-black/40 mix-blend-multiply" />
         </div>
       )}
 
-      {/* --- Main Content Card --- */}
-      <div className="w-full max-w-4xl bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500 relative z-10 border border-white/20">
+      {/* --- Main Glass Container --- */}
+      <div className="w-full max-w-3xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-3xl rounded-3xl shadow-2xl overflow-hidden animate-slide-up duration-700 relative z-10 border border-white/50 dark:border-white/10 ring-1 ring-black/5">
         
-        {/* Header / Branding Section */}
-        <div className="flex flex-col items-center pt-12 pb-8 px-6 text-center space-y-8">
+        {/* Header Section */}
+        <div className="relative pt-14 pb-8 px-8 text-center space-y-6">
           
-          {/* Logo Container - Clean & Integrated (Adjusted Size) */}
+          {/* Logo - Larger & Less Rounded & Less Padding */}
           {event.logo_url && (
-            <div className="h-20 md:h-32 w-auto max-w-[280px] relative flex items-center justify-center mix-blend-multiply mx-auto">
-               <img
-                src={event.logo_url}
-                alt={`${event.name} Logo`}
-                className="h-full w-auto object-contain hover:scale-105 transition-transform"
-              />
+            <div className="relative mx-auto inline-block group">
+               {/* Glow effect behind */}
+               <div 
+                 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 blur-3xl opacity-40 rounded-full transition-opacity duration-500 group-hover:opacity-60"
+                 style={{ backgroundColor: themeColor }}
+               />
+               
+               {/* Rounded White Container */}
+               <div className="relative h-40 w-40 bg-white dark:bg-slate-800 rounded-3xl p-3 shadow-xl shadow-slate-200/50 dark:shadow-black/30 border border-slate-100 dark:border-slate-700 flex items-center justify-center transform transition-transform duration-300 hover:scale-105 hover:-rotate-1">
+                 <img
+                  src={event.logo_url}
+                  alt={`${event.name} Logo`}
+                  className="w-full h-full object-contain filter dark:brightness-110"
+                />
+               </div>
             </div>
           )}
 
-          {/* Title */}
-          <div className="space-y-3 max-w-2xl">
-            <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
+          {/* Titles */}
+          <div className="space-y-3 max-w-2xl mx-auto">
+            <h1 className="text-3xl md:text-4xl font-heading font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
               {event.name}
             </h1>
-            <p className="text-slate-500 text-lg font-light">
-              ระบบดาวน์โหลดใบประกาศนียบัตรออนไลน์
-            </p>
+            
+            <div className="flex items-center justify-center gap-3">
+               <div className="h-px w-8 bg-gradient-to-r from-transparent to-slate-300 dark:to-slate-700" />
+               <p className="text-slate-500 dark:text-slate-400 font-medium text-xs tracking-wide uppercase">
+                 Digital Certificate Portal
+               </p>
+               <div className="h-px w-8 bg-gradient-to-l from-transparent to-slate-300 dark:to-slate-700" />
+            </div>
           </div>
         </div>
 
-        {/* Divider */}
-        <div className="w-full h-px bg-slate-200" />
-
         {/* Content Section (Search) */}
-        <div className="p-8 md:p-12 bg-slate-50/50">
-          <div className="max-w-2xl mx-auto">
-             <div className="mb-6 text-left">
-                <h2 className="text-lg font-semibold text-slate-700 mb-1 flex items-center gap-2">
-                  <span className="w-1 h-6 bg-primary rounded-full inline-block" style={{ backgroundColor: themeColor }}/>
-                  ค้นหาใบประกาศนียบัตร
+        <div className="relative px-6 md:px-12 pb-12">
+          {/* Subtle Separator */}
+          <div className="w-full h-px bg-slate-100 dark:bg-slate-800 mb-8" />
+
+          <div className="max-w-xl mx-auto">
+             <div className="mb-6 text-center">
+                <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-1">
+                  Verify & Download
                 </h2>
-                <p className="text-sm text-slate-400 pl-3">กรอกรหัสพนักงาน หรือ เบอร์โทรศัพท์ เพื่อตรวจสอบสิทธิ์</p>
+                <p className="text-slate-500 text-xs text-muted-foreground/80">
+                  กรอกรหัสพนักงาน หรือ เบอร์โทรศัพท์ เพื่อค้นหาเอกสารของคุณ
+                </p>
              </div>
              
              <SearchForm
@@ -112,11 +122,12 @@ export default async function EventPage(props: PageProps) {
         </div>
 
         {/* Footer */}
-        <div className="bg-slate-50 py-4 text-center text-slate-400 text-xs border-t border-slate-200">
-           &copy; {new Date().getFullYear()} Digital Certificate Platform
+        <div className="bg-slate-50 dark:bg-slate-950 py-4 text-center text-slate-400 text-xs font-medium border-t border-slate-100 dark:border-slate-800">
+           <span className="opacity-75">Secured by</span> <span className="text-slate-600 dark:text-slate-300 font-bold">CertPlatform</span>
         </div>
 
       </div>
+      
     </main>
   );
 }

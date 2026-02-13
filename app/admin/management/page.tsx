@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -43,6 +44,7 @@ import {
   Filter,
 } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner"; // Assuming sonner is used, or fallback to alert
 
 export default function ManagementPage() {
   const [activeTab, setActiveTab] = useState("certificates");
@@ -54,9 +56,14 @@ export default function ManagementPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedEventId, setSelectedEventId] = useState<string>("all");
 
+  // --- Selection States ---
+  const [selectedCertIds, setSelectedCertIds] = useState<Set<string>>(new Set());
+
   // --- Delete States ---
   const [deleteCertId, setDeleteCertId] = useState<string | null>(null);
   const [deleteEventId, setDeleteEventId] = useState<string | null>(null);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   // --- Fetch Events (Once) ---
   const fetchEvents = async () => {
@@ -90,6 +97,7 @@ export default function ManagementPage() {
     const { data: certData } = await query;
     if (certData) setCerts(certData);
     setLoading(false);
+    setSelectedCertIds(new Set()); // Reset selection on fetch
   };
 
   // Initial Load
@@ -109,7 +117,6 @@ export default function ManagementPage() {
     const { error } = await supabase.from("certificates").delete().eq("id", deleteCertId);
     if (!error) {
       setCerts(certs.filter((c) => c.id !== deleteCertId));
-      // Optionally re-fetch to be safe
       fetchCerts();
     }
     setDeleteCertId(null);
@@ -128,12 +135,53 @@ export default function ManagementPage() {
     setDeleteEventId(null);
   };
 
-  // Filter Search
+  // --- Bulk Selection Logic ---
+
+  // Filter Search Logic for Selection
   const filteredCerts = certs.filter(
     (c) =>
       c.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.user_identifier.toLowerCase().includes(searchTerm.toLowerCase()),
   );
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      // Select all currently filtered certs
+      const allIds = new Set(filteredCerts.map((c) => c.id));
+      setSelectedCertIds(allIds);
+    } else {
+      setSelectedCertIds(new Set());
+    }
+  };
+
+  const handleSelectCert = (id: string, checked: boolean) => {
+    const newSelected = new Set(selectedCertIds);
+    if (checked) {
+      newSelected.add(id);
+    } else {
+      newSelected.delete(id);
+    }
+    setSelectedCertIds(newSelected);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedCertIds.size === 0) return;
+    setBulkDeleting(true);
+
+    const idsToDelete = Array.from(selectedCertIds);
+    const { error } = await supabase.from("certificates").delete().in("id", idsToDelete);
+
+    if (error) {
+      alert("Failed to delete selected items: " + error.message);
+    } else {
+      // Success
+      setCerts(certs.filter((c) => !selectedCertIds.has(c.id)));
+      setSelectedCertIds(new Set());
+      fetchCerts(); // Refresh
+    }
+    setBulkDeleting(false);
+    setShowBulkDeleteConfirm(false);
+  };
 
   return (
     <div className="max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 pb-24 px-4 sm:px-6">
@@ -176,8 +224,8 @@ export default function ManagementPage() {
         {/* ================= TAB 1: CERTIFICATES ================= */}
         <TabsContent value="certificates" className="space-y-4">
           <div className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
-            <div className="p-6 border-b border-slate-100 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
-              <div>
+            <div className="p-6 border-b border-slate-100 flex flex-col xl:flex-row items-center justify-between gap-4">
+              <div className="flex-1">
                 <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
                   รายชื่อผู้รับใบประกาศล่าสุด
                 </h2>
@@ -186,9 +234,27 @@ export default function ManagementPage() {
                 </p>
               </div>
               
-              <div className="flex flex-col sm:flex-row gap-3 w-full xl:w-auto">
+              <div className="flex flex-col sm:flex-row gap-3 w-full xl:w-auto items-center">
+                 {/* Bulk Action */}
+                 {selectedCertIds.size > 0 && (
+                    <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 mr-2">
+                       <span className="text-sm text-slate-500">
+                         Selected {selectedCertIds.size} items
+                       </span>
+                       <Button 
+                         variant="destructive" 
+                         size="sm"
+                         onClick={() => setShowBulkDeleteConfirm(true)}
+                         className="h-9"
+                       >
+                         <Trash2 className="h-4 w-4 mr-2" />
+                         Delete Selected
+                       </Button>
+                    </div>
+                 )}
+
                  {/* Event Filter */}
-                 <div className="w-full sm:w-[280px]">
+                 <div className="w-full sm:w-[200px]">
                   <Select value={selectedEventId} onValueChange={setSelectedEventId}>
                     <SelectTrigger className="pl-3 h-9 w-full bg-white border-slate-200 rounded-md focus:ring-primary/20 text-sm">
                       <div className="flex items-center gap-2 truncate">
@@ -208,7 +274,7 @@ export default function ManagementPage() {
                  </div>
 
                  {/* Search Box */}
-                 <div className="relative w-full sm:w-72 group">
+                 <div className="relative w-full sm:w-64 group">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 group-focus-within:text-primary transition-colors" />
                   <Input
                     placeholder="ค้นหาชื่อ หรือ รหัส..."
@@ -224,6 +290,13 @@ export default function ManagementPage() {
               <Table>
                 <TableHeader className="bg-slate-50/50">
                   <TableRow className="hover:bg-transparent border-slate-100">
+                    <TableHead className="w-[50px] text-center">
+                       <Checkbox 
+                          checked={filteredCerts.length > 0 && selectedCertIds.size === filteredCerts.length}
+                          onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
+                          aria-label="Select all"
+                       />
+                    </TableHead>
                     <TableHead className="w-[200px] font-semibold text-slate-600">Event</TableHead>
                     <TableHead className="font-semibold text-slate-600">Name</TableHead>
                     <TableHead className="font-semibold text-slate-600">ID</TableHead>
@@ -234,7 +307,7 @@ export default function ManagementPage() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="h-48 text-center">
+                      <TableCell colSpan={6} className="h-48 text-center">
                         <div className="flex flex-col items-center gap-2 text-slate-400">
                           <Loader2 className="animate-spin h-8 w-8 text-primary" />
                           <p>กำลังโหลดข้อมูล...</p>
@@ -243,7 +316,7 @@ export default function ManagementPage() {
                     </TableRow>
                   ) : filteredCerts.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="h-48 text-center text-slate-500">
+                      <TableCell colSpan={6} className="h-48 text-center text-slate-500">
                         <div className="flex flex-col items-center gap-2 opacity-60">
                           <FileText className="h-10 w-10" />
                           <p>ไม่พบข้อมูลใบประกาศ</p>
@@ -252,7 +325,14 @@ export default function ManagementPage() {
                     </TableRow>
                   ) : (
                     filteredCerts.map((cert) => (
-                      <TableRow key={cert.id} className="hover:bg-slate-50/40 transition-colors border-b border-slate-100 last:border-0">
+                      <TableRow key={cert.id} className="hover:bg-slate-50/40 transition-colors border-b border-slate-100 last:border-0 data-[selected=true]:bg-primary/5" data-selected={selectedCertIds.has(cert.id)}>
+                        <TableCell className="text-center">
+                           <Checkbox 
+                              checked={selectedCertIds.has(cert.id)}
+                              onCheckedChange={(checked) => handleSelectCert(cert.id, checked as boolean)}
+                              aria-label={`Select ${cert.user_name}`}
+                           />
+                        </TableCell>
                         <TableCell className="font-medium text-slate-600">
                           <div className="truncate max-w-[180px] text-xs font-medium bg-slate-100 text-slate-600 inline-block px-2 py-1 rounded-md border border-slate-200">
                             {cert.events?.name}
@@ -435,6 +515,33 @@ export default function ManagementPage() {
             <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDeleteEvent} className="bg-red-600 hover:bg-red-700">
               ยืนยันการลบ
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 3. Bulk Delete Confirm Dialog */}
+      <AlertDialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ยืนยันการลบหมู่?</AlertDialogTitle>
+            <AlertDialogDescription>
+              คุณกำลังจะลบข้อมูล {selectedCertIds.size} รายการที่เลือก
+              <br/>
+              การกระทำนี้ไม่สามารถเรียกคืนได้
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleting}>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => {
+                e.preventDefault(); // Prevent auto-close
+                handleBulkDelete();
+              }} 
+              className="bg-red-600 hover:bg-red-700"
+              disabled={bulkDeleting}
+            >
+              {bulkDeleting ? <Loader2 className="animate-spin h-4 w-4" /> : "ยืนยันลบทั้งหมด"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -4,14 +4,14 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Search, Download, CheckCircle2, XCircle } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Loader2, Search, Download, CheckCircle2, XCircle, SearchX } from "lucide-react";
 
 interface SearchFormProps {
   eventId: string;
   bucketUrl: string;
   themeColor: string;
-  eventSlug: string; // รับค่า slug มาเพื่อใช้ประกอบ Link (ถ้าจำเป็นในอนาคต)
+  eventSlug: string;
 }
 
 export default function SearchForm({
@@ -24,25 +24,25 @@ export default function SearchForm({
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<any[]>([]);
   const [error, setError] = useState("");
+  const [searched, setSearched] = useState(false);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validation: ห้ามค้นหาถ้าช่องว่าง
     if (!query.trim()) return;
 
     setLoading(true);
     setError("");
     setResults([]);
+    setSearched(true);
 
     try {
       const searchTerm = query.trim();
-      // Query Database หาข้อมูลจาก event_id และ (user_identifier หรือ user_name)
       const { data, error } = await supabase
         .from("certificates")
         .select("*")
         .eq("event_id", eventId)
-        .or(`user_identifier.eq.${searchTerm},user_name.ilike.%${searchTerm}%`); // ค้นหาด้วยรหัส (ตรงตัว) หรือ ชื่อ (บางส่วน)
+        .or(`user_identifier.eq.${searchTerm},user_name.ilike.%${searchTerm}%`);
 
       if (error) {
         throw error;
@@ -61,29 +61,30 @@ export default function SearchForm({
     }
   };
 
-  // ฟังก์ชันดาวน์โหลด (Updated: นับยอดดาวน์โหลด)
   const handleDownload = (certId: string) => {
-    // ✅ วิ่งไป API เพื่อบันทึกสถิติ (+1) ก่อน แล้ว API จะ Redirect ไปหาไฟล์จริงให้อัตโนมัติ
     const downloadApiUrl = `/api/download?id=${certId}`;
-    // เปิด Tab ใหม่
     window.open(downloadApiUrl, "_blank");
   };
 
   return (
-    <div className="w-full space-y-8">
-      {/* Search Input Group (NCSA Style) */}
-      <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-3">
-        <Input
-          placeholder="กรอกชื่อ, รหัสพนักงาน หรือ เบอร์โทรศัพท์"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="flex-1 h-12 text-base px-4 bg-white border border-slate-300 rounded-md focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
-          disabled={loading}
-        />
+    <div className="w-full space-y-6">
+      {/* Search Input Group */}
+      <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-3 relative z-10">
+        <div className="relative flex-1 group">
+          <Input
+            placeholder="กรอกชื่อ, รหัสพนักงาน หรือ เบอร์โทรศัพท์"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="flex-1 h-12 text-base px-4 bg-white/50 backdrop-blur-xl border-white/20 shadow-lg shadow-input/5 rounded-lg focus-visible:ring-primary/30 transition-all group-hover:bg-white/60"
+            disabled={loading}
+          />
+          <div className="absolute inset-0 -z-10 rounded-lg bg-gradient-to-r from-primary/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity blur-md" />
+        </div>
+        
         <Button
           type="submit"
           disabled={loading || !query.trim()}
-          className="h-12 px-8 rounded-md text-base font-semibold shadow-md transition-all hover:opacity-90 active:scale-95 whitespace-nowrap"
+          className="h-12 px-6 rounded-lg text-base font-medium shadow-md shadow-primary/20 transition-all hover:scale-105 active:scale-95 whitespace-nowrap text-white"
           style={{ backgroundColor: themeColor }}
         >
           {loading ? (
@@ -97,51 +98,68 @@ export default function SearchForm({
         </Button>
       </form>
 
-      {/* Result Display - List Row Style */}
+      {/* Result Display */}
+      {searched && !loading && results.length === 0 && !error && (
+         <div className="text-center py-8 text-muted-foreground animate-fade-in">
+            <SearchX className="h-10 w-10 mx-auto mb-2 opacity-20" />
+            <p className="text-sm">ไม่พบข้อมูลที่ค้นหา</p>
+         </div>
+      )}
+
       {results.length > 0 && (
-        <div className="animate-in fade-in slide-in-from-top-4 duration-500 space-y-4">
-          <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-             
-             {/* Table Header like */}
-             <div className="bg-primary/5 px-6 py-3 border-b border-primary/10 flex justify-between items-center" style={{ borderColor: `${themeColor}20`, backgroundColor: `${themeColor}05` }}>
-                <span className="text-sm font-semibold text-slate-700">ผลการค้นหา</span>
-                <span className="text-xs text-slate-500">พบ {results.length} รายการ</span>
-             </div>
-
-             {/* Result Rows */}
-             <div className="divide-y divide-slate-100">
-               {results.map((result) => (
-                 <div key={result.id} className="p-6 flex flex-col md:flex-row items-center justify-between gap-6 hover:bg-slate-50 transition-colors">
-                    <div className="flex items-center gap-4 w-full">
-                      <div className="h-12 w-12 flex-shrink-0 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
-                         <CheckCircle2 className="h-6 w-6 text-green-500" />
+        <div className="animate-slide-up space-y-4">
+          <div className="flex items-center justify-between px-2 pb-1">
+             <span className="text-xs font-medium text-muted-foreground">ผลการค้นหา {results.length} รายการ</span>
+          </div>
+          
+          <div className="space-y-3">
+               {results.map((result, index) => (
+                 <Card 
+                    key={result.id} 
+                    className="group border-white/20 bg-white/60 backdrop-blur-xl hover:bg-white/80 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1 overflow-hidden"
+                    style={{ animationDelay: `${index * 100}ms` }}
+                 >
+                   <div className="p-4 flex flex-col md:flex-row items-center justify-between gap-4 relative">
+                      {/* Decorative accent */}
+                      <div className="absolute left-0 top-0 bottom-0 w-1 transition-all group-hover:w-1.5" style={{ backgroundColor: themeColor }} />
+                      
+                      <div className="flex items-center gap-4 w-full pl-2">
+                        <div className="h-10 w-10 flex-shrink-0 rounded-full bg-green-500/10 flex items-center justify-center border border-green-500/20 group-hover:scale-110 transition-transform">
+                           <CheckCircle2 className="h-5 w-5 text-green-600" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-lg font-bold text-foreground truncate">{result.user_name}</h4>
+                          <p className="text-xs text-muted-foreground font-medium font-mono">
+                            ID: <span className="text-foreground/80">{result.user_identifier}</span>
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <h4 className="text-lg font-bold text-slate-800 truncate">{result.user_name}</h4>
-                        <p className="text-sm text-slate-500 font-mono truncate">ID: {result.user_identifier}</p>
-                      </div>
-                    </div>
 
-                    <Button
-                      onClick={() => handleDownload(result.id)}
-                      className="w-full md:w-auto h-10 px-6 text-sm font-medium rounded-md shadow-sm transition-all hover:-translate-y-0.5 whitespace-nowrap"
-                      style={{ backgroundColor: themeColor }}
-                    >
-                      <Download className="mr-2 h-4 w-4" />
-                      Download
-                    </Button>
-                 </div>
+                      <Button
+                        onClick={() => handleDownload(result.id)}
+                        className="w-full md:w-auto h-9 px-6 text-sm font-medium rounded-md shadow-sm transition-all hover:brightness-110 whitespace-nowrap text-white"
+                        style={{ backgroundColor: themeColor }}
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        Download
+                      </Button>
+                   </div>
+                 </Card>
                ))}
-             </div>
           </div>
         </div>
       )}
 
       {/* Error Message */}
       {error && (
-        <div className="animate-in fade-in slide-in-from-top-2 flex items-center gap-3 p-4 bg-red-50 text-red-600 rounded-lg border border-red-200 shadow-sm">
-          <XCircle className="h-5 w-5 flex-shrink-0" />
-          <span className="text-sm font-medium">{error}</span>
+        <div className="animate-slide-up flex items-center gap-3 p-4 bg-red-50/90 backdrop-blur-sm text-red-600 rounded-lg border border-red-200 shadow-sm mx-auto max-w-lg">
+          <div className="h-8 w-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+             <XCircle className="h-5 w-5 text-red-600" />
+          </div>
+          <div className="flex-1">
+             <h5 className="font-semibold text-sm">ไม่สามารถทำรายการได้</h5>
+             <span className="text-xs opacity-90">{error}</span>
+          </div>
         </div>
       )}
     </div>
