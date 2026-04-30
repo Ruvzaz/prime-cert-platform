@@ -40,6 +40,30 @@ export async function GET(req: NextRequest) {
   // ตัวอย่าง: https://pub-xxx.r2.dev/primes-org/file.pdf
   const targetUrl = `${event.storage_bucket_url}/${event.slug}/${cert.filename}`;
 
-  // 4. Redirect ไปหาไฟล์จริง
-  return NextResponse.redirect(targetUrl);
+  // 4. ดึงไฟล์จาก R2 และส่งกลับเป็น Response พร้อม Header บังคับดาวน์โหลด
+  try {
+    const fileResponse = await fetch(targetUrl);
+    
+    if (!fileResponse.ok) {
+      throw new Error(`Failed to fetch file: ${fileResponse.statusText}`);
+    }
+
+    const blob = await fileResponse.blob();
+    const headers = new Headers();
+    
+    // ตั้งค่า Content-Disposition เพื่อบังคับดาวน์โหลด
+    // ใช้ filename* เพื่อรองรับชื่อไฟล์ภาษาไทย
+    const filename = cert.filename || "certificate.jpg";
+    headers.set("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+    headers.set("Content-Type", fileResponse.headers.get("Content-Type") || "application/octet-stream");
+
+    return new NextResponse(blob, {
+      status: 200,
+      headers,
+    });
+  } catch (err) {
+    console.error("Fetch error, falling back to redirect:", err);
+    // หาก Fetch ไม่สำเร็จ ให้ลอง Redirect ไปยัง URL ตรงๆ เป็นแผนสำรอง
+    return NextResponse.redirect(targetUrl);
+  }
 }

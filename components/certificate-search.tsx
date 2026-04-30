@@ -57,10 +57,8 @@ export default function CertificateSearch({
 
   const handleDownload = () => {
     if (!result) return;
-    // Construct R2 Public URL or Presigned URL
-    // สมมติว่า bucketUrl เป็น Base URL เช่น https://pub-xxx.r2.dev
-    const downloadUrl = `${bucketUrl}/${result.filename}`;
-    window.open(downloadUrl, "_blank");
+    const downloadApiUrl = `/api/download?id=${result.id}`;
+    window.open(downloadApiUrl, "_blank");
   };
 
   return (

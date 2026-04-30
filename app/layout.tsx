@@ -11,7 +11,7 @@ const sarabun = Sarabun({
 
 export const metadata: Metadata = {
   title: "Digital Certificate Platform",
-  description: "Secure and verifiable digital certificates for your achievements.",
+  description: "Digital Certificate Platform for your achievements.",
 };
 
 export default function RootLayout({
