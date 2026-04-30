@@ -72,7 +72,7 @@ export default function SearchForm({
       <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-3 relative z-10">
         <div className="relative flex-1 group">
           <Input
-            placeholder="กรอกชื่อ, รหัสพนักงาน หรือ เบอร์โทรศัพท์"
+            placeholder="กรอกชื่อ และ นามสกุล, หรือ Email ที่ทำการลงทะเบียนในระบบ THNCA"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="flex-1 h-12 text-base px-4 bg-white/50 backdrop-blur-xl border-white/20 shadow-lg shadow-input/5 rounded-lg focus-visible:ring-primary/30 transition-all group-hover:bg-white/60"

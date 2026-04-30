@@ -48,7 +48,7 @@ export default function CertificateSearch({
         setResult(data);
       }
     } catch (err) {
-      setError("ไม่พบข้อมูล หรือรหัสพนักงานไม่ถูกต้อง");
+      setError("ไม่พบข้อมูล ชื่อ หรือ อีเมลไม่ถูกต้อง");
       console.error(err);
     } finally {
       setLoading(false);
@@ -67,7 +67,7 @@ export default function CertificateSearch({
     <div className="w-full max-w-md mx-auto space-y-6">
       <form onSubmit={handleSearch} className="flex gap-2">
         <Input
-          placeholder="กรอกรหัสพนักงาน / Employee ID"
+          placeholder="กรอกรหัส / Employee ID"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="bg-white/90 backdrop-blur"

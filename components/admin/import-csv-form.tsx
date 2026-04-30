@@ -127,7 +127,7 @@ export function ImportCsvForm() {
           Import CSV Data
         </CardTitle>
         <CardDescription className="text-slate-500 ml-12">
-          จับคู่รหัสพนักงานกับชื่อไฟล์ PDF ที่อัปโหลดไปแล้ว
+          จับคู่รหัสกับชื่อไฟล์ PDF ที่อัปโหลดไปแล้ว
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-8 p-8">

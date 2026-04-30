@@ -105,10 +105,10 @@ export default async function EventPage(props: PageProps) {
           <div className="max-w-xl mx-auto">
              <div className="mb-6 text-center">
                 <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-1">
-                  Verify & Download
+                  Search & Download
                 </h2>
                 <p className="text-slate-500 text-xs text-muted-foreground/80">
-                  กรอกรหัสพนักงาน หรือ เบอร์โทรศัพท์ เพื่อค้นหาเอกสารของคุณ
+                  กรอกรหัส หรือ เบอร์โทรศัพท์ เพื่อค้นหา
                 </p>
              </div>
              

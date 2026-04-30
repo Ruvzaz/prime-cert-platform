@@ -13,7 +13,7 @@ export interface Certificate {
   id: string;
   created_at: string;
   event_id: string;
-  user_identifier: string; // รหัสพนักงาน
+  user_identifier: string; // รหัส
   user_name: string; // ชื่อผู้รับ
   filename: string; // ชื่อไฟล์ .pdf
 }

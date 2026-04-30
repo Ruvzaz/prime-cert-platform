@@ -164,7 +164,7 @@ export function AddSingleForm() {
           <div className="grid gap-6 md:grid-cols-2">
             {/* 2. User Info */}
             <div className="space-y-2">
-              <Label>รหัสพนักงาน / เบอร์โทร (Identifier)</Label>
+              <Label>รหัส / เบอร์โทร (Identifier)</Label>
               <Input
                 placeholder="เช่น EMP-999"
                 value={formData.user_identifier}
